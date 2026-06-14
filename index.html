@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Варто іти? — Фільтр навчальних можливостей</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="Перемкнути тему">
+  <span class="toggle-thumb" id="toggleThumb">☀️</span>
+</button>
+<div class="container">
+
+  <header>
+    <div class="eyebrow">Інструмент для дизайнерів</div>
+    <h1>Ще один <em>курс?</em></h1>
+    <p class="subtitle">5 питань щоб вирішити — записатись чи пропустити.</p>
+  </header>
+
+  <div class="load-block">
+    <div class="load-header">
+      <span class="load-label">Моє навантаження зараз</span>
+      <span class="load-value" id="capLabel">Середнє</span>
+    </div>
+    <input type="range" id="capSlider" min="1" max="3" step="1" value="2" oninput="updateCap(this.value)">
+    <div class="load-ticks">
+      <span>Вільно</span>
+      <span>Середнє</span>
+      <span>Перевантаження</span>
+    </div>
+  </div>
+
+  <div id="questionsWrap"></div>
+  <div class="verdict" id="verdict">
+    <div class="verdict-icon" id="vIcon"></div>
+    <div class="verdict-title" id="vTitle"></div>
+    <p class="verdict-text" id="vText"></p>
+    <div class="verdict-actions">
+      <button class="btn-reset" onclick="resetAll()">↺ Новий захід</button>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <p>
+    Створила
+    <a href="https://www.linkedin.com/in/veronikazavgorodnia/" target="_blank" rel="noopener">
+      Veronika Zavgorodnia
+    </a>
+  </p>
+</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('toggleThumb').textContent = isDark ? '☀️' : '🌙';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+
+// Restore saved theme
+const saved = localStorage.getItem('theme');
+if (saved === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.addEventListener('DOMContentLoaded', () => {
+    const t = document.getElementById('toggleThumb');
+    if (t) t.textContent = '🌙';
+  });
+}
+
+let answers = {};
+let capLevel = 2;
+
+const allQ = {
+  align: {
+    text: 'Це пов\'язано з моїми поточними цілями або проєктами?',
+    opts: [
+      { text: 'Так, безпосередньо', val: 3, cls: 'sel-yes' },
+      { text: 'Частково', val: 1, cls: 'sel-mid' },
+      { text: 'Ні, просто цікаво', val: 0, cls: 'sel-no' },
+    ]
+  },
+  format: {
+    text: 'Який це формат?',
+    opts: [
+      { text: 'Разовий захід — лекція, воркшоп, конференція', val: null, cls: 'sel-yes', type: 'event' },
+      { text: 'Курс або серія занять', val: null, cls: 'sel-mid', type: 'course' },
+    ]
+  },
+  time_event: {
+    text: 'Скільки часу займе разом із дорогою?',
+    opts: [
+      { text: 'До 2 годин', val: 2, cls: 'sel-yes' },
+      { text: '2–4 години', val: 1, cls: 'sel-mid' },
+      { text: 'Більше 4 годин', val: 0, cls: 'sel-no' },
+    ]
+  },
+  unique_event: {
+    text: 'Цей спікер або живий формат — рідкісна нагода?',
+    opts: [
+      { text: 'Так, більше не повториться', val: 3, cls: 'sel-yes' },
+      { text: 'Є запис або повториться', val: 0, cls: 'sel-no' },
+    ],
+    hints: { 0: '💡 Є запис — збережи посилання і повернись, коли буде час.' }
+  },
+  time_course_week: {
+    text: 'Скільки годин на тиждень потрібно для курсу?',
+    opts: [
+      { text: 'До 2 годин', val: 2, cls: 'sel-yes' },
+      { text: '2–5 годин', val: 1, cls: 'sel-mid' },
+      { text: 'Більше 5 годин', val: 0, cls: 'sel-no' },
+    ]
+  },
+  time_course_dur: {
+    text: 'Є жорсткі дедлайни або обов\'язкові домашні завдання?',
+    opts: [
+      { text: 'Гнучкий темп, без дедлайнів', val: 2, cls: 'sel-yes' },
+      { text: 'Є розклад, але без домашок', val: 1, cls: 'sel-mid' },
+      { text: 'Дедлайни + обов\'язкові домашки', val: 0, cls: 'sel-no' },
+    ],
+    hints: {
+      0: '⚠️ Жорсткі дедлайни при перевантаженні — головна причина "роблю аби як". Зваж двічі.',
+      2: '💡 Гнучкий темп — але постав собі особистий дедлайн, інакше курс зависне незакінченим.'
+    }
+  },
+  unique_course: {
+    text: 'Програма дає щось, чого не знайдеш у вільному доступі?',
+    opts: [
+      { text: 'Так — зворотній зв\'язок, куратор, спільнота', val: 3, cls: 'sel-yes' },
+      { text: 'Можна зібрати самостійно', val: 0, cls: 'sel-no' },
+    ],
+    hints: { 0: '💡 Якщо матеріал є безкоштовно — можливо, варто спочатку спробувати вивчити самостійно.' }
+  },
+};
+
+function getFlow() {
+  const type = answers['format_type'];
+  if (!type) return ['align', 'format'];
+  if (type === 'event') return ['align', 'format', 'time_event', 'unique_event'];
+  return ['align', 'format', 'time_course_week', 'time_course_dur', 'unique_course'];
+}
+
+function updateCap(v) {
+  capLevel = parseInt(v);
+  const labels = ['', 'Вільно', 'Середнє', 'Перевантаження'];
+  document.getElementById('capLabel').textContent = labels[v];
+  const pct = ((v - 1) / 2 * 100) + '%';
+  document.getElementById('capSlider').style.setProperty('--pct', pct);
+  evaluate();
+}
+
+function pick(id, val, cls, extra) {
+  answers[id] = val;
+  answers[id + '_cls'] = cls;
+  if (extra) Object.assign(answers, extra);
+  render();
+  evaluate();
+}
+
+function render() {
+  const flow = getFlow();
+  const wrap = document.getElementById('questionsWrap');
+  wrap.innerHTML = '';
+
+  flow.forEach((qid, i) => {
+    const q = allQ[qid];
+    const answered = qid === 'format'
+      ? !!answers['format_type']
+      : answers[qid] !== undefined;
+
+    const block = document.createElement('div');
+    block.className = 'q-block' + (answered ? ' done' : '');
+    block.style.animationDelay = (i * 0.06) + 's';
+
+    const optsHtml = q.opts.map(o => {
+      const isSel = qid === 'format'
+        ? answers['format_type'] === o.type
+        : (answers[qid] === o.val && answers[qid + '_cls'] === o.cls);
+      const extraArg = o.type ? `{format_type:'${o.type}'}` : 'null';
+      return `<button class="opt-btn ${isSel ? o.cls : ''}" onclick="pick('${qid}', ${o.val}, '${o.cls}', ${extraArg})">
+        <span class="opt-dot"></span>${o.text}
+      </button>`;
+    }).join('');
+
+    let hintHtml = '';
+    if (q.hints && answers[qid] !== undefined && q.hints[answers[qid]]) {
+      hintHtml = `<div class="hint-text show">${q.hints[answers[qid]]}</div>`;
+    }
+
+    block.innerHTML = `
+      <div class="q-num">Питання ${i + 1} / ${flow.length}</div>
+      <div class="q-text">${q.text}</div>
+      <div class="opts">${optsHtml}</div>
+      ${hintHtml}
+    `;
+    wrap.appendChild(block);
+  });
+}
+
+function evaluate() {
+  const flow = getFlow();
+  const type = answers['format_type'];
+  const vEl = document.getElementById('verdict');
+
+  if (!type) { vEl.className = 'verdict'; return; }
+
+  const scoreKeys = flow.filter(k => k !== 'format');
+  if (!scoreKeys.every(k => answers[k] !== undefined)) { vEl.className = 'verdict'; return; }
+
+  const score = scoreKeys.reduce((s, k) => s + (answers[k] || 0), 0);
+  const adjusted = score - (capLevel === 3 ? 2 : 0);
+
+  let cls, icon, title, text;
+
+  if (adjusted >= 6) {
+    cls = 'go';
+    icon = 'Так.';
+    title = 'Варто — записуйся';
+    text = type === 'course'
+      ? 'Курс вписується в твої цілі й навантаження. Постав нагадування на кожне заняття просто зараз — і визнач, яка поточна задача тимчасово йде на паузу.'
+      : 'Гарна нагода з хорошим балансом часу. Підтверди участь і постав нагадування зараз, поки не забула.';
+  } else if (adjusted >= 3) {
+    cls = 'maybe';
+    icon = 'Може.';
+    title = 'Можливо — але з умовою';
+    text = capLevel === 3
+      ? 'Ти зараз перевантажена. Запишись тільки якщо готова відкласти щось із поточного списку. Що саме ти готова прибрати?'
+      : (type === 'course'
+        ? 'Непоганий курс, але навантаження відчутне. Переконайся, що є конкретний час у тижні — інакше домашки накопичаться.'
+        : 'Захід цікавий, але не критичний. Іди тільки якщо цей тиждень справді вільний.');
+  } else {
+    cls = 'no';
+    icon = 'Ні.';
+    title = 'Пропусти цього разу';
+    text = type === 'course'
+      ? 'Надто великі витрати часу або слабкий зв\'язок з цілями. Збережи посилання на курс і повернись до нього в менш завантажений місяць.'
+      : 'Слабкий збіг з пріоритетами або забагато часу. Якщо є запис — збережи посилання у папку "Колись" і не думай про це зараз.';
+  }
+
+  document.getElementById('vIcon').textContent = icon;
+  document.getElementById('vTitle').textContent = title;
+  document.getElementById('vText').textContent = text;
+  vEl.className = `verdict show ${cls}`;
+  setTimeout(() => vEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+function resetAll() {
+  answers = {};
+  document.getElementById('verdict').className = 'verdict';
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+updateCap(2);
+render();
+</script>
+</body>
+</html>
