@@ -107,6 +107,66 @@ h1 em {
   max-width: 100%;
 }
 
+/* Counter badge */
+.counter-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 10px;
+  cursor: default;
+  margin-left: 4px;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.counter-badge:hover {
+  border-color: var(--muted);
+}
+
+.counter-tip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.5;
+  white-space: nowrap;
+  padding: 7px 12px;
+  border-radius: 8px;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.counter-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+
+.counter-badge:hover .counter-tip {
+  visibility: visible;
+  opacity: 1;
+}
+
 /* Load slider */
 .load-block {
   background: var(--card);

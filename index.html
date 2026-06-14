@@ -14,7 +14,13 @@
 <div class="container">
 
   <header>
-    <div class="eyebrow">Інструмент для дизайнерів</div>
+    <div class="eyebrow">
+      Інструмент для дизайнерів
+      <span class="counter-badge" id="counterBadge">
+        <span id="counterNum">0</span> результатів
+        <span class="counter-tip">Скільки разів ти отримала результат з початку використання</span>
+      </span>
+    </div>
     <h1>Ще один <em>курс?</em></h1>
     <p class="subtitle">5 питань щоб вирішити — записатись чи пропустити.</p>
   </header>
@@ -74,6 +80,18 @@ if (saved === 'dark') {
 
 let answers = {};
 let capLevel = 2;
+let verdictCountedThisSession = false;
+
+function incrementCounter() {
+  const count = parseInt(localStorage.getItem('verdictCount') || '0') + 1;
+  localStorage.setItem('verdictCount', count);
+  document.getElementById('counterNum').textContent = count;
+}
+
+function loadCounter() {
+  const count = localStorage.getItem('verdictCount') || '0';
+  document.getElementById('counterNum').textContent = count;
+}
 
 const allQ = {
   align: {
@@ -246,15 +264,21 @@ function evaluate() {
   document.getElementById('vText').textContent = text;
   vEl.className = `verdict show ${cls}`;
   setTimeout(() => vEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  if (!verdictCountedThisSession) {
+    verdictCountedThisSession = true;
+    incrementCounter();
+  }
 }
 
 function resetAll() {
   answers = {};
+  verdictCountedThisSession = false;
   document.getElementById('verdict').className = 'verdict';
   render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+loadCounter();
 updateCap(2);
 render();
 </script>
